@@ -1,0 +1,44 @@
+{
+    "meta": {
+        "label": "Export to Power BI (with OAuth)",
+        "description": "Custom DSS Exporter to Microsoft Power BI (online versions). This version requires a valid access token stored in your Project Variables.",
+        "icon": "icon-cloud"
+    },
+    "exportBehavior": "MANAGES_OUTPUT",
+    "exportOptions": [
+        {
+            "label": "Export to Power BI (with OAuth)"
+        }
+    ],
+    "params": [
+        {
+            "name": "powerbi_connection",
+            "label": "Power BI connection",
+            "type": "PRESET",
+            "parameterSetId": "ms-oauth"
+        },
+        {
+            "name": "dataset",
+            "label": "Dataset",
+            "description": "Power BI output dataset name",
+            "type": "STRING",
+            "mandatory": true
+        },
+        {
+            "name": "overwrite",
+            "label": "Overwrite dataset",
+            "description": "Whether Power BI dataset will be overwritten or not (or created in the case of a new export)",
+            "type": "BOOLEAN",
+            "mandatory": true,
+            "defaultValue": true
+        },
+        {
+            "name": "buffer_size",
+            "label": "Buffer size",
+            "description": "Number of records to send to Power BI at each write",
+            "type": "INT",
+            "mandatory": true,
+            "defaultValue": 100
+        }
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "meta": {
+        "label": "Parameter set ms-oauth",
+        "description": "",
+        "icon": "icon-cloud"
+    },
+    "defaultDefinableInline": true,
+    "defaultDefinableAtProjectLevel": true,
+    "pluginParams": [
+        {
+            "name": "ms-oauth_credentials",
+            "type": "CREDENTIAL_REQUEST",
+            "credentialRequestSettings": {
+                "type": "OAUTH2",
+                "oauth2Flow": "authorization_code",
+                "oauth2Provider": "AZURE",
+                "authorizationEndpoint": "https://login.microsoftonline.com/common/oauth2/authorize",
+                "tokenEndpoint": "https://login.microsoftonline.com/common/oauth2/token",
+                "scope": "openid Dataset.ReadWrite.All",
+                "resources": ["https://analysis.windows.net/powerbi/api"]
+            }
+        }
+    ],
+    "params": []
+}
