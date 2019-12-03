@@ -1,12 +1,10 @@
-# This file is the actual code for the custom Python exporter python
-import os
-import sys
-import json
-import requests
+import os, json, requests, logging
 from powerbi import *
 from dataiku.exporter import Exporter
-from dataiku.exporter import SchemaHelper
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO,
+                    format='power-bi plugin %(levelname)s - %(message)s')
 
 class PowerBIExporter(Exporter):
     
@@ -16,14 +14,12 @@ class PowerBIExporter(Exporter):
         self.row_index = 0
         self.row_buffer = {}
         self.row_buffer["rows"] = []
-        
         # Plugin settings
         self.username        = self.config.get("username",      None)
         self.password        = self.config.get("password",      None)
         self.client_id       = self.config.get("client-id",     None)
         self.client_secret   = self.config.get("client-secret", None)        
         self.pbi_dataset     = self.config.get("dataset",       None)
-        #self.pbi_table       = self.config.get("table",         None)
         self.pbi_table       = "dss-data"
         self.pbi_overwrite   = self.config.get("overwrite",     None)
         self.pbi_buffer_size = self.config.get("buffer_size",   None)
@@ -36,10 +32,10 @@ class PowerBIExporter(Exporter):
         )
         token = response.get("access_token")
         if token is None:
-            print "ERROR [-] Error while retrieving your Power BI access token, please check your credentials."
-            print "ERROR [-] Azure authentication API response:"
-            print json.dumps(response, indent=4)
-            sys.exit("Authentication error")
+            logger.error("ERROR [-] Error while retrieving your Power BI access token, please check your credentials.")
+            logger.error("ERROR [-] Azure authentication API response:")
+            logger.error(json.dumps(response, indent=4))
+            raise Exception("Authentication error")
         # Interacting with Power BI API's
         self.headers = {
             'Authorization': 'Bearer ' + token,
@@ -50,7 +46,7 @@ class PowerBIExporter(Exporter):
     def open(self, schema):
         self.schema = schema
         if self.pbi_overwrite:
-            print "[+] Looking for Power BI datasets with similar names..."
+            logger.info("[+] Looking for Power BI datasets with similar names...")
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset)
             for dataset in datasets:
                 self.pbi.delete_dataset(dataset)
@@ -60,28 +56,31 @@ class PowerBIExporter(Exporter):
                 schema=schema
             )
             if response.get("id") is None:
-                print "ERROR [-] Error while creating your Power BI dataset."
-                print "ERROR [-] Azure response:"
-                print json.dumps(response, indent=4)
-                sys.exit("Dataset creation error")
+                logger.error("ERROR [-] Error while creating your Power BI dataset.")
+                logger.error("ERROR [-] Azure response:")
+                logger.error(json.dumps(response, indent=4))
+                raise Exception("Dataset creation error")
             self.dsid = response["id"]
-            print "[+] Created Power BI dataset ID {}".format(self.dsid)
+            logger.info("[+] Created Power BI dataset ID {}".format(self.dsid))
         else:
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset)
             if len(datasets) > 0:
-                print "[+] Existing datasets: {}".format(datasets)
+                logger.info("[+] Existing datasets: {}".format(datasets))
                 self.dsid = datasets[0]
-                print "[+] Will use Power BI dataset ID {}".format(self.dsid)
+                logger.info("[+] Will use Power BI dataset ID {}".format(self.dsid))
             else:
-                print "ERROR [-] No existing dataset with name {}".format(self.pbi_dataset)
-                print "ERROR [-] Check 'Overwrite' to create a new one"
-                sys.exit("Dataset creation error")
+                logger.error("ERROR [-] No existing dataset with name {}".format(self.pbi_dataset))
+                logger.info("ERROR [-] Check 'Overwrite' to create a new one")
+                raise Exception("Dataset creation error")
                 
             
     def write_row(self, row):
         row_obj = {}
         for (col, val) in zip(self.schema["columns"], row):
-            row_obj[col["name"]] = val
+            if col['type'] in ['int', 'bigint', 'tinyint', 'smallint']:
+                row_obj[col["name"]] = int(val)
+            else:
+                row_obj[col["name"]] = val
         self.row_buffer["rows"].append(row_obj)
         if len(self.row_buffer["rows"]) > self.pbi_buffer_size:
             response = requests.post(
@@ -92,13 +91,13 @@ class PowerBIExporter(Exporter):
                 data=json.dumps(self.row_buffer["rows"]),
                 headers=self.headers
             )
-            print "[+] Inserted {} records (response code: {})".format(
+            logger.info("[+] Inserted {} records (response code: {})".format(
                 len(self.row_buffer["rows"]), 
                 response.status_code
-            )
+            ))
             if not str(response.status_code).startswith('2'):
-                print "[-] Response code {} may indicate an issue while loading your records.".format(response.status_code)
-                print "[-] API response: {}".format(response.json())
+                logger.info("[-] Response code {} may indicate an issue while loading your records.".format(response.status_code))
+                logger.info("[-] API response: {}".format(response.json()))
             self.row_buffer["rows"] = []
         self.row_index += 1
         
@@ -112,18 +111,17 @@ class PowerBIExporter(Exporter):
                 data=json.dumps(self.row_buffer["rows"]),
                 headers=self.headers
             )
-            print "[+] Inserted {} records (response code: {})".format(
+            logger.info("[+] Inserted {} records (response code: {})".format(
                 len(self.row_buffer["rows"]), 
                 response.status_code
-            )
+            ))
             if not str(response.status_code).startswith('2'):
-                print "[-] Response code {} may indicate an issue while loading your records.".format(response.status_code)
-                print "[-] API response: {}".format(response.json())
-        print "[+] Loading complete."
+                logger.warning("[-] Response code {} may indicate an issue while loading your records.".format(response.status_code))
+                logger.warning("[-] API response: {}".format(response.json()))
+        logger.info("[+] Loading complete.")
         msg = ""
         msg = msg + "[+] {}".format("="*80) + "\n"
         msg = msg + "[+] Your Power BI dataset should be available at:" + "\n"
         msg = msg + "[+] https://app.powerbi.com/groups/me/datasets/{}".format(self.dsid) + "\n"
         msg = msg + "[+] {}".format("="*80)
-        print msg
-
+        logger.info(msg)

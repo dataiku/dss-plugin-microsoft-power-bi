@@ -7,6 +7,8 @@
     "defaultDefinableInline": true,
     "defaultDefinableAtProjectLevel": true,
     "pluginParams": [
+    ],
+    "params": [
         {
             "name": "ms-oauth_credentials",
             "type": "CREDENTIAL_REQUEST",
@@ -17,9 +19,10 @@
                 "authorizationEndpoint": "https://login.microsoftonline.com/common/oauth2/authorize",
                 "tokenEndpoint": "https://login.microsoftonline.com/common/oauth2/token",
                 "scope": "openid Dataset.ReadWrite.All",
-                "resources": ["https://analysis.windows.net/powerbi/api"]
+                "resources": [
+                    "https://analysis.windows.net/powerbi/api"
+                ]
             }
         }
-    ],
-    "params": []
+    ]
 }

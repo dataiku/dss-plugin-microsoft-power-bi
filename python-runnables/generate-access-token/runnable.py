@@ -1,12 +1,10 @@
-# This file is the actual code for the Python runnable generate-access-token
-import os
-import sys
-import json
-import dataiku
-import requests
-from powerbi import *
+import dataiku, logging
+from powerbi import generate_access_token
 from dataiku.runnables import Runnable
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO,
+                    format='power-bi plugin %(levelname)s - %(message)s')
 
 class PowerBIAccesTokenGenerator(Runnable):
 
@@ -29,8 +27,8 @@ class PowerBIAccesTokenGenerator(Runnable):
         )
         token = response.get("access_token")
         if token is None:
-            print "ERROR can't retrieve an access token. Please check your credentials"
-            sys.exit("Authentication error")
+            logger.error("ERROR can't retrieve an access token. Please check your credentials")
+            raise Exception("Authentication error")
         # Project Variables    
         dss = dataiku.api_client()
         project = dss.get_project( self.project_key )
@@ -41,7 +39,3 @@ class PowerBIAccesTokenGenerator(Runnable):
         variables["standard"]["powerbi-settings"]["project_key"] = self.project_key
         project.set_variables(variables)
         return "Successfully generated a new access token for Power BI."
-            
-            
-            
-        

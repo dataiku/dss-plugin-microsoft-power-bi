@@ -1,9 +1,4 @@
-import sys
-import json 
-import dataiku
-import requests
-import datetime
-
+import sys, json, requests, datetime, logging
 
 # Data types mapping DSS => Power BI
 fieldSetterMap = {
@@ -20,6 +15,10 @@ fieldSetterMap = {
     'map':      'String',
     'object':   'String'
 }
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO,
+                    format='power-bi plugin %(levelname)s - %(message)s')
 
 # Main interactor object
 class PowerBI(object):
@@ -39,78 +38,29 @@ class PowerBI(object):
     def get_dataset_by_name(self, name):
         data = self.get_datasets()
         datasets = data.json().get('value')
-        o = []
+        ret = []
         if datasets:
             for dataset in datasets:
                 if dataset['name'] == name:
-                    o.append(dataset['id'])
-        return o
+                    ret.append(dataset['id'])
+        return ret
     
     def delete_dataset(self, dsid):
         endpoint = 'https://api.powerbi.com/v1.0/myorg/datasets/{}'.format(dsid)
         response = requests.delete(endpoint, headers=self.headers)
-        print "[+] Deleted existing Power BI dataset {} (response code: {})...".format(
+        logger.info("[+] Deleted existing Power BI dataset {} (response code: {})...".format(
             dsid, response.status_code
-        )
+        ))
         return response
-    
-    def create_dataset_from_dss(self, pbi_dataset=None, pbi_table="dataiku-data", dss_dataset=None, overwrite=True):
-        o = {}
-        ds = dataiku.Dataset(dss_dataset)
-        o['pbi-dataset'] = pbi_dataset
-        o['pbi-table']   = pbi_table
-        o['dss-dataset'] = dss_dataset
-        o['created-at']  = str(datetime.datetime.utcnow())
-        # Delete existing dataset
-        if overwrite:
-            print "[+] Overwriting existing Power BI dataset..."
-            datasets = self.get_dataset_by_name(pbi_dataset)
-            for dataset in datasets:
-                self.delete_dataset(dataset)            
-        # Build the Power BI Dataset schema
-        columns = []
-        for column in ds.read_schema():
-            c = {}
-            c["name"] = column["name"]
-            c["dataType"] = fieldSetterMap.get(column["type"], "String")
-            columns.append(c)            
-        # Power BI dataset definition
-        payload = {
-            "name": pbi_dataset,
-            "defaultMode" : "PushStreaming",
-            "tables": [
-                {
-                    "name": pbi_table,
-                    "columns": columns
-                }
-            ]
-        }
-        response = requests.post(
-            "https://api.powerbi.com/v1.0/myorg/datasets", 
-            data=json.dumps(payload), 
-            headers=self.headers
-        )
-        o['response-dataset'] = response.status_code
-        o['dataset-id'] = response.json().get('id', None)
-        if o['dataset-id'] is None:
-            print "[-] ERROR while trying to retrieve a dataset id. Your token may need to be refreshed."
-            sys.exit(1)
-        else:
-            print "[+] Created Power BI dataset {} (dataset: {}) from {}".format(
-                o['dataset-id'],
-                o['pbi-dataset'],
-                o['dss-dataset']
-            )
-        return o
-    
+
     def create_dataset_from_schema(self, pbi_dataset=None, pbi_table=None, schema=None):
         # Build the Power BI Dataset schema
         columns = []
         for column in schema["columns"]:
-            c = {}
-            c["name"] = column["name"]
-            c["dataType"] = fieldSetterMap.get(column["type"], "String")
-            columns.append(c)
+            new_column = {}
+            new_column["name"] = column["name"]
+            new_column["dataType"] = fieldSetterMap.get(column["type"], "String")
+            columns.append(new_column)
         # Power BI dataset definition
         payload = {
             "name": pbi_dataset,
@@ -128,44 +78,7 @@ class PowerBI(object):
             headers=self.headers
         )
         return response.json()
-    
-    def load_data_from_dss(self, dataset, append=False):
 
-        dsid = dataset['dataset-id']
-        
-        # Empty existing rows
-        if not append:
-            print "[+] Deleting existing records..."
-            requests.delete(
-                "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(dsid, dataset['pbi-table']),
-                headers=self.headers
-            )
-        
-        # Load records
-        ds = dataiku.Dataset(dataset['dss-dataset'])
-        _o = []
-        i = 0
-        for block in ds.iter_dataframes(chunksize=1000):
-            i = i + 1
-            rows = {}
-            rows["rows"] = []
-            for index, record in block.iterrows():
-                rows["rows"].append(record.to_dict())
-                
-            response = requests.post(
-                "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(dsid, dataset['pbi-table']),
-                data=json.dumps(rows),
-                headers=self.headers
-            )
-            _o.append(response.status_code)
-            print "[+] Loaded {} records...".format(i*1000)
-        dataset['responses-load'] = _o
-        print "[+] Loading complete"
-        dataset['loaded-at']  = str(datetime.datetime.utcnow())
-            
-        return dataset
-
-    
 def generate_access_token(username=None, password=None, client_id=None, client_secret=None):
     """
       Call the Azure API's to retrieve an access token to interact with Power BI.
