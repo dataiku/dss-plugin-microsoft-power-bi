@@ -1,4 +1,0 @@
-{
-    "libraries" : ["jquery", "dataiku", "bootstrap"],
-    "label" : "Microsoft Power BI Credentials Management"
-}

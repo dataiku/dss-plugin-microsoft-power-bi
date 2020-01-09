@@ -1,6 +1,6 @@
 {
     "meta": {
-        "label": "Parameter set ms-oauth",
+        "label": "Azure Single Sign On",
         "description": "",
         "icon": "icon-cloud"
     },
