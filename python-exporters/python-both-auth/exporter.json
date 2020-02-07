@@ -9,42 +9,65 @@
         
     "exportOptions": [
         {
-            "label" : "Export to Power BI (with credentials)"
+            "label" : "Export to Power BI"
         }
     ],
 
     "params": [
         {
+            "type": "SELECT",
+            "name": "authentication_method",
+            "label": "Authentication method",
+            "selectChoices": [
+                { "value": "oauth", "label": "OAuth"},
+                { "value": "credentials", "label": "Credentials"} 
+            ],
+            "mandatory": true,
+            "defaultValue": "oauth"
+        },
+        {
+            "name": "powerbi_connection",
+            "label": "Power BI connection",
+            "type": "PRESET",
+            "parameterSetId": "ms-oauth",
+            "visibilityCondition" : "model.authentication_method == 'oauth'"
+        },
+        {
             "label":"Power BI Credentials",
-            "type": "SEPARATOR"
+            "type": "SEPARATOR",
+            "visibilityCondition" : "model.authentication_method == 'credentials'"
         },
         {
             "name": "username",
             "label": "Username",
             "description": "Power BI username (email address)",
             "type": "STRING",
-            "mandatory" : true
+            "mandatory" : true,
+            "visibilityCondition" : "model.authentication_method == 'credentials'"
         },
         {
             "name": "password",
             "label": "Password",
             "description": "Power BI password",
             "type": "PASSWORD",
-            "mandatory" : true
+            "mandatory" : true,
+            "visibilityCondition" : "model.authentication_method == 'credentials'"
         },
         {
             "name": "client-id",
             "label": "Client ID",
             "description": "Power BI application client ID",
             "type": "STRING",
-            "mandatory" : true
+            "mandatory" : true,
+            "visibilityCondition" : "model.authentication_method == 'credentials'"
         },
         {
             "name": "client-secret",
             "label": "Client Secret",
             "description": "Power BI application client secret",
             "type": "PASSWORD",
-            "mandatory" : true
+            "mandatory" : true,
+            "visibilityCondition" : "model.authentication_method == 'credentials'"
         },
         {
             "label":"Power BI Output",
@@ -58,20 +81,16 @@
             "mandatory" : true
         },
         {
-            "name": "overwrite",
-            "label": "Overwrite dataset",
-            "description": "Whether Power BI dataset will be overwritten or not (or created in the case of a new export)",
-            "type": "BOOLEAN",
+            "type": "SELECT",
+            "name": "export_method",
+            "label": "Export method",
+            "selectChoices": [
+                { "value": "new_dataset", "label": "Create new dataset"},
+                { "value": "overwrite", "label": "Overwrite existing dataset"},
+                { "value": "append", "label": "Append to existing dataset"} 
+            ],
             "mandatory": true,
-            "defaultValue": true
-        },
-        {
-            "name": "table",
-            "label": "Table",
-            "description": "Power BI output table name (will always be 'dss-data')",
-            "type": "STRING",
-            "mandatory" : false,
-            "defaultValue": "dss-data"
+            "defaultValue": "new_dataset"
         },
         {
             "name": "buffer_size",
