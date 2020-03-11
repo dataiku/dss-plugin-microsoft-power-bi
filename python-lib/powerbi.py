@@ -1,4 +1,6 @@
-import sys, json, requests, datetime, logging
+import json
+import requests
+import logging
 
 # Data types mapping DSS => Power BI
 fieldSetterMap = {
@@ -20,21 +22,22 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO,
                     format='power-bi plugin %(levelname)s - %(message)s')
 
+
 # Main interactor object
 class PowerBI(object):
-    
+
     def __init__(self, token):
         self.token = token
         self.headers = {
             'Authorization': 'Bearer ' + self.token,
             'Content-Type': 'application/json'
         }
-        
+
     def get_datasets(self):
         endpoint = 'https://api.powerbi.com/v1.0/myorg/datasets'
         response = requests.get(endpoint, headers=self.headers)
         return response
-    
+
     def get_dataset_by_name(self, name):
         data = self.get_datasets()
         datasets = data.json().get('value')
@@ -44,7 +47,7 @@ class PowerBI(object):
                 if dataset['name'] == name:
                     ret.append(dataset['id'])
         return ret
-    
+
     def delete_dataset(self, dsid):
         endpoint = 'https://api.powerbi.com/v1.0/myorg/datasets/{}'.format(dsid)
         response = requests.delete(endpoint, headers=self.headers)
@@ -64,7 +67,7 @@ class PowerBI(object):
         # Power BI dataset definition
         payload = {
             "name": pbi_dataset,
-            "defaultMode" : "PushStreaming",
+            "defaultMode": "PushStreaming",
             "tables": [
                 {
                     "name": pbi_table,
@@ -73,11 +76,12 @@ class PowerBI(object):
             ]
         }
         response = requests.post(
-            "https://api.powerbi.com/v1.0/myorg/datasets", 
-            data=json.dumps(payload), 
+            "https://api.powerbi.com/v1.0/myorg/datasets",
+            data=json.dumps(payload),
             headers=self.headers
         )
         return response.json()
+
 
 def generate_access_token(username=None, password=None, client_id=None, client_secret=None):
     """
@@ -85,14 +89,13 @@ def generate_access_token(username=None, password=None, client_id=None, client_s
       Requires full credentials to be passed.
     """
     data = {
-        "username"     : username,
-        "password"     : password,
-        "client_id"    : client_id,
+        "username": username,
+        "password": password,
+        "client_id": client_id,
         "client_secret": client_secret,
-        "resource"     : "https://analysis.windows.net/powerbi/api",
-        "grant_type"   : "password",
-        "scope"        : "openid"
+        "resource": "https://analysis.windows.net/powerbi/api",
+        "grant_type": "password",
+        "scope": "openid"
     }
     response = requests.post('https://login.microsoftonline.com/common/oauth2/token', data=data)
     return response.json()
-    

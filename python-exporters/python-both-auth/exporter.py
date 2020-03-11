@@ -1,10 +1,13 @@
-import json, requests, logging
-from powerbi import *
+import json
+import logging
+import requests
+from powerbi import PowerBI, generate_access_token
 from dataiku.exporter import Exporter
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO,
                     format='power-bi plugin %(levelname)s - %(message)s')
+
 
 class PowerBIExporter(Exporter):
 
@@ -14,13 +17,13 @@ class PowerBIExporter(Exporter):
         self.row_index = 0
         self.row_buffer = {}
         self.row_buffer["rows"] = []
-        
-        self.pbi_dataset     = self.config.get("dataset",       None)
-        self.pbi_table       = "dss-data"
+
+        self.pbi_dataset = self.config.get("dataset",       None)
+        self.pbi_table = "dss-data"
         self.pbi_buffer_size = self.config.get("buffer_size",   None)
-        
+
         self.export_method = self.config.get("export_method",       None)
-            
+
         authentication_method = self.config.get("authentication_method", None)
         if authentication_method == "oauth":
             try:
@@ -35,10 +38,10 @@ class PowerBIExporter(Exporter):
                 logger.error(str(err))
                 raise Exception("Authentication error")
         elif authentication_method == "credentials":
-            self.username        = self.config.get("username",      None)
-            self.password        = self.config.get("password",      None)
-            self.client_id       = self.config.get("client-id",     None)
-            self.client_secret   = self.config.get("client-secret", None)
+            self.username = self.config.get("username",      None)
+            self.password = self.config.get("password",      None)
+            self.client_id = self.config.get("client-id",     None)
+            self.client_secret = self.config.get("client-secret", None)
             # Retrieve access token
             response = generate_access_token(
                 self.username,
@@ -57,9 +60,8 @@ class PowerBIExporter(Exporter):
                 'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
             }
-            self.pbi = PowerBI(token)                
-                
-                
+            self.pbi = PowerBI(token)
+
     def open(self, schema):
         self.schema = schema
         if self.export_method == "overwrite":
@@ -68,8 +70,8 @@ class PowerBIExporter(Exporter):
                 for dataset in datasets:
                     self.pbi.delete_dataset(dataset)
                 response = self.pbi.create_dataset_from_schema(
-                    pbi_dataset=self.pbi_dataset, 
-                    pbi_table=self.pbi_table, 
+                    pbi_dataset=self.pbi_dataset,
+                    pbi_table=self.pbi_table,
                     schema=schema
                 )
                 if response.get("id") is None:
@@ -97,8 +99,8 @@ class PowerBIExporter(Exporter):
 
         else:
             response = self.pbi.create_dataset_from_schema(
-                    pbi_dataset=self.pbi_dataset, 
-                    pbi_table=self.pbi_table, 
+                    pbi_dataset=self.pbi_dataset,
+                    pbi_table=self.pbi_table,
                     schema=schema
             )
             if response.get("id") is None:
@@ -109,7 +111,6 @@ class PowerBIExporter(Exporter):
 
             self.dsid = response["id"]
             logger.info("[+] Created new Power BI dataset ID {}".format(self.dsid))
-
 
     def write_row(self, row):
         row_obj = {}
@@ -122,14 +123,14 @@ class PowerBIExporter(Exporter):
         if len(self.row_buffer["rows"]) > self.pbi_buffer_size:
             response = requests.post(
                 "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(
-                    self.dsid, 
+                    self.dsid,
                     self.pbi_table
                 ),
                 data=json.dumps(self.row_buffer["rows"]),
                 headers=self.headers
             )
             logger.info("[+] Inserted {} records (response code: {})".format(
-                len(self.row_buffer["rows"]), 
+                len(self.row_buffer["rows"]),
                 response.status_code
             ))
             if not str(response.status_code).startswith('2'):
@@ -142,14 +143,14 @@ class PowerBIExporter(Exporter):
         if len(self.row_buffer["rows"]) > 0:
             response = requests.post(
                 "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(
-                    self.dsid, 
+                    self.dsid,
                     self.pbi_table
                 ),
                 data=json.dumps(self.row_buffer["rows"]),
                 headers=self.headers
             )
             logger.info("[+] Inserted {} records (response code: {})".format(
-                len(self.row_buffer["rows"]), 
+                len(self.row_buffer["rows"]),
                 response.status_code
             ))
             if not str(response.status_code).startswith('2'):
