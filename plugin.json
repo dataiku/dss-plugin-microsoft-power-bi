@@ -1,8 +1,8 @@
 {
-    "id": "microsoft-power-bi",
+    "id": "microsoft-power-bi-v2",
     "version": "2.0.0",
     "meta": {
-        "label": "Microsoft Power BI",
+        "label": "Microsoft Power BI v2",
         "description": "Toolbox for Microsoft Power BI (online version)",
         "author": "Dataiku",
         "icon": "icon-cloud",
