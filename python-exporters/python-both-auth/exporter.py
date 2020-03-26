@@ -12,6 +12,8 @@ logging.basicConfig(level=logging.INFO,
 
 class PowerBIExporter(Exporter):
 
+    EMPTY_CONNECTION = {"username": None, "password": None, "client-id": None, "client-secret": None}
+
     def __init__(self, config, plugin_config):
         self.config = config
         self.plugin_config = plugin_config
@@ -19,11 +21,11 @@ class PowerBIExporter(Exporter):
         self.row_buffer = {}
         self.row_buffer["rows"] = []
 
-        self.pbi_dataset = self.config.get("dataset",       None)
+        self.pbi_dataset = self.config.get("dataset", None)
         self.pbi_table = "dss-data"
-        self.pbi_buffer_size = self.config.get("buffer_size",   None)
+        self.pbi_buffer_size = self.config.get("buffer_size", None)
 
-        self.export_method = self.config.get("export_method",       None)
+        self.export_method = self.config.get("export_method", None)
 
         authentication_method = self.config.get("authentication_method", None)
         if authentication_method == "oauth":
@@ -39,10 +41,11 @@ class PowerBIExporter(Exporter):
                 logger.error(str(err))
                 raise Exception("Authentication error")
         elif authentication_method == "credentials":
-            self.username = self.config.get("username",      None)
-            self.password = self.config.get("password",      None)
-            self.client_id = self.config.get("client-id",     None)
-            self.client_secret = self.config.get("client-secret", None)
+            basic_connection = self.config.get("basic_connection", self.EMPTY_CONNECTION)
+            self.username = basic_connection.get("username", None)
+            self.password = basic_connection.get("password", None)
+            self.client_id = basic_connection.get("client-id", None)
+            self.client_secret = basic_connection.get("client-secret", None)
             # Retrieve access token
             response = generate_access_token(
                 self.username,

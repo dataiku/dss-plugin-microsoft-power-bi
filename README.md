@@ -1,8 +1,8 @@
-# Microsoft Power-BI Plugin
+# Microsoft Power-BI Plugin v2
 
 This Dataiku DSS plugin provides an exporter to push datasets to [Microsoft Power-BI](https://powerbi.microsoft.com/en-us/).
 
-Documentation: https://www.dataiku.com/dss/plugins/info/microsoft-power-bi.html
+Documentation: https://www.dataiku.com/product/plugins/microsoft-power-bi
 
 
 ### Licence

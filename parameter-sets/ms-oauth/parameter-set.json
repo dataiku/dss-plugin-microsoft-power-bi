@@ -2,7 +2,7 @@
     "meta": {
         "label": "Azure Single Sign On",
         "description": "",
-        "icon": "icon-cloud"
+        "icon": "icon-powerbi"
     },
     "defaultDefinableInline": true,
     "defaultDefinableAtProjectLevel": true,
