@@ -44,6 +44,14 @@
             "type": "SEPARATOR"
         },
         {
+            "name": "workspace",
+            "label": "Workspace",
+            "description": "Workspace ID / \"My Workspace\" if empty",
+            "type": "STRING",
+            "defaultValue": "",
+            "mandatory" : true
+        },
+        {
             "name": "dataset",
             "label": "Dataset",
             "description": "Power BI output dataset name",

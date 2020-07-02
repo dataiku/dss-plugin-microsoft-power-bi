@@ -1,6 +1,5 @@
 import json
 import logging
-import requests
 from powerbi import PowerBI, generate_access_token
 from dataiku.exporter import Exporter
 from math import isnan
@@ -22,6 +21,9 @@ class PowerBIExporter(Exporter):
         self.row_buffer["rows"] = []
 
         self.pbi_dataset = self.config.get("dataset", None)
+        self.pbi_workspace = self.config.get("workspace", None)
+        if self.pbi_workspace == "":
+            self.pbi_workspace = None
         self.pbi_table = "dss-data"
         self.pbi_buffer_size = self.config.get("buffer_size", None)
 
@@ -31,15 +33,12 @@ class PowerBIExporter(Exporter):
         if authentication_method == "oauth":
             try:
                 access_token = config.get('powerbi_connection')['ms-oauth_credentials']
-                self.headers = {
-                    'Authorization': 'Bearer ' + access_token,
-                    'Content-Type': 'application/json'
-                }
                 self.pbi = PowerBI(access_token)
             except Exception as err:
                 logger.error("ERROR [-] Error while reading your Power BI access token from Project Variables")
                 logger.error(str(err))
                 raise Exception("Authentication error")
+            self.pbi_group_id = self.pbi.get_group_id_by_name(self.pbi_workspace)
         elif authentication_method == "credentials":
             basic_connection = self.config.get("basic_connection", self.EMPTY_CONNECTION)
             self.username = basic_connection.get("username", None)
@@ -60,22 +59,20 @@ class PowerBIExporter(Exporter):
                 logger.error(json.dumps(response, indent=4))
                 raise Exception("Authentication error")
             # Interacting with Power BI API's
-            self.headers = {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
             self.pbi = PowerBI(token)
+            self.pbi_group_id = self.pbi.get_group_id_by_name(self.pbi_workspace)
 
     def open(self, schema):
         self.schema = schema
         if self.export_method == "overwrite":
-            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset)
+            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
                 for dataset in datasets:
                     self.pbi.delete_dataset(dataset)
                 response = self.pbi.create_dataset_from_schema(
                     pbi_dataset=self.pbi_dataset,
                     pbi_table=self.pbi_table,
+                    pbi_group_id=self.pbi_group_id,
                     schema=schema
                 )
                 if response.get("id") is None:
@@ -92,7 +89,7 @@ class PowerBIExporter(Exporter):
                 raise Exception("Cannot overwrite: no existing dataset with name {}".format(self.pbi_dataset))
 
         elif self.export_method == "append":
-            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset)
+            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
                 self.dsid = datasets[0]
                 logger.info("[+] Will append to Power BI dataset ID {}".format(self.dsid))
@@ -105,6 +102,7 @@ class PowerBIExporter(Exporter):
             response = self.pbi.create_dataset_from_schema(
                     pbi_dataset=self.pbi_dataset,
                     pbi_table=self.pbi_table,
+                    pbi_group_id=self.pbi_group_id,
                     schema=schema
             )
             if response.get("id") is None:
@@ -125,41 +123,23 @@ class PowerBIExporter(Exporter):
                 row_obj[col["name"]] = val
         self.row_buffer["rows"].append(row_obj)
         if len(self.row_buffer["rows"]) > self.pbi_buffer_size:
-            response = requests.post(
-                "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(
-                    self.dsid,
-                    self.pbi_table
-                ),
-                data=json.dumps(self.row_buffer["rows"]),
-                headers=self.headers
+            self.pbi.post_table_row(
+                self.row_buffer["row"],
+                self.dsid,
+                self.pbi_table,
+                pbi_group_id=self.pbi_group_id
             )
-            logger.info("[+] Inserted {} records (response code: {})".format(
-                len(self.row_buffer["rows"]),
-                response.status_code
-            ))
-            if not str(response.status_code).startswith('2'):
-                logger.info("[-] Response code {} may indicate an issue while loading your records.".format(response.status_code))
-                logger.info("[-] API response: {}".format(response.json()))
             self.row_buffer["rows"] = []
         self.row_index += 1
 
     def close(self):
         if len(self.row_buffer["rows"]) > 0:
-            response = requests.post(
-                "https://api.powerbi.com/v1.0/myorg/datasets/{}/tables/{}/rows".format(
-                    self.dsid,
-                    self.pbi_table
-                ),
-                data=json.dumps(self.row_buffer["rows"]),
-                headers=self.headers
+            self.pbi.post_table_row(
+                self.row_buffer["rows"],
+                self.dsid,
+                self.pbi_table,
+                pbi_group_id=self.pbi_group_id
             )
-            logger.info("[+] Inserted {} records (response code: {})".format(
-                len(self.row_buffer["rows"]),
-                response.status_code
-            ))
-            if not str(response.status_code).startswith('2'):
-                logger.info("[-] Response code {} may indicate an issue while loading your records.".format(response.status_code))
-                logger.info("[-] API response: {}".format(response.json()))
         logger.info("[+] Loading complete.")
         msg = ""
         msg = msg + "[+] {}".format("="*80) + "\n"
