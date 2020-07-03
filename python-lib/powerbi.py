@@ -164,9 +164,16 @@ class PowerBI(object):
         ret = []
         for row in rows:
             for column_with_date in self.columns_with_date:
-                row[column_with_date] = row[column_with_date].isoformat()
+                row[column_with_date] = date_convertion(row[column_with_date])
             ret.append(row)
         return json.dumps(ret)
+
+
+def date_convertion(pandas_date):
+    ret = pandas_date.isoformat()
+    if ret == "NaT":
+        ret = None
+    return ret
 
 
 def is_json_response(response):
