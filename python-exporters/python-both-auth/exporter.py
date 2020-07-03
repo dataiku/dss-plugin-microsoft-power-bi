@@ -64,6 +64,7 @@ class PowerBIExporter(Exporter):
 
     def open(self, schema):
         self.schema = schema
+        self.pbi.prepare_date_columns(self.schema)
         if self.export_method == "overwrite":
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
@@ -124,7 +125,7 @@ class PowerBIExporter(Exporter):
         self.row_buffer["rows"].append(row_obj)
         if len(self.row_buffer["rows"]) > self.pbi_buffer_size:
             self.pbi.post_table_row(
-                self.row_buffer["row"],
+                self.row_buffer["rows"],
                 self.dsid,
                 self.pbi_table,
                 pbi_group_id=self.pbi_group_id

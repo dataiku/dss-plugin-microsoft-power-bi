@@ -69,21 +69,11 @@ class PowerBI(object):
     def create_dataset_from_schema(self, pbi_dataset=None, pbi_table=DEFAULT_PBI_TABLE, pbi_group_id=None, schema=None):
         # Build the Power BI Dataset schema
         columns = []
-        self.columns_with_date = []
         for column in schema["columns"]:
             new_column = {}
             new_column["name"] = column["name"]
             new_column["dataType"] = fieldSetterMap.get(column["type"], "String")
-            if column["type"] == "date":
-                self.columns_with_date.append(column["name"])
-                # 1972-04-14T00:00:00
-                # new_column["formatString"] = "dddd\\, mmmm d\\, yyyy"
             columns.append(new_column)
-        if len(self.columns_with_date) > 0:
-            self.json_filter = self.parse_json_dates
-        else:
-            self.json_filter = json.dumps
-        # Power BI dataset definition
         payload = {
             "name": pbi_dataset,
             "defaultMode": "PushStreaming",
@@ -100,6 +90,16 @@ class PowerBI(object):
             data=json.dumps(payload)
         )
         return json_response
+
+    def prepare_date_columns(self, schema):
+        self.columns_with_date = []
+        for column in schema["columns"]:
+            if column["type"] == "date":
+                self.columns_with_date.append(column["name"])
+        if len(self.columns_with_date) > 0:
+            self.json_filter = self.parse_json_dates
+        else:
+            self.json_filter = json.dumps
 
     def get_group_id_by_name(self, pbi_workspace=None):
         if pbi_workspace is None or pbi_workspace == "My workspace":
