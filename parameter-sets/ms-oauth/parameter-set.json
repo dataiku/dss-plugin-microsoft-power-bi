@@ -4,7 +4,7 @@
         "description": "",
         "icon": "icon-powerbi"
     },
-    "defaultDefinableInline": true,
+    "defaultDefinableInline": false,
     "defaultDefinableAtProjectLevel": true,
     "pluginParams": [
     ],
