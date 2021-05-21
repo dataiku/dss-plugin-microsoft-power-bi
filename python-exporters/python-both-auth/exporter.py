@@ -141,7 +141,7 @@ class PowerBIExporter(Exporter):
                 self.pbi_table,
                 pbi_group_id=self.pbi_group_id
             )
-        self.pbi.refresh(self.dsid,self.pbi_group_id)
+        self.pbi.refresh_dataset(self.dsid,self.pbi_group_id)
         logger.info("[+] Loading complete.")
         msg = ""
         msg = msg + "[+] {}".format("="*80) + "\n"
