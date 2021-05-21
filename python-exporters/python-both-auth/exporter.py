@@ -70,25 +70,14 @@ class PowerBIExporter(Exporter):
     def open(self, schema):
         self.schema = schema
         self.pbi.prepare_date_columns(self.schema)
+
         if self.export_method == "overwrite":
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
                 for dataset in datasets:
-                    self.pbi.delete_dataset(dataset)
-                response = self.pbi.create_dataset_from_schema(
-                    pbi_dataset=self.pbi_dataset,
-                    pbi_table=self.pbi_table,
-                    pbi_group_id=self.pbi_group_id,
-                    schema=schema
-                )
-                if response.get("id") is None:
-                    logger.error("ERROR [-] Error while creating your Power BI dataset.")
-                    logger.error("ERROR [-] Azure response:")
-                    logger.error(json.dumps(response, indent=4))
-                    raise Exception("Dataset creation error probably from Azure")
-
-                self.dsid = response["id"]
-                logger.info("[+] Created Power BI dataset ID for overwrite {}".format(self.dsid))
+                    self.pbi.empty_dataset(dataset, pbi_table=self.pbi_table, pbi_group_id=self.pbi_group_id)
+                self.dsid = datasets[0]
+                logger.info("[+] First emptied Power BI dataset ID for overwrite {}".format(self.dsid))
             else:
                 logger.error("ERROR [-] No existing dataset with name {}".format(self.pbi_dataset))
                 logger.error("ERROR [-] Select 'Create new dataset' to create a new one")
@@ -104,7 +93,7 @@ class PowerBIExporter(Exporter):
                 logger.error("ERROR [-] Select 'Create new dataset' to create a new one")
                 raise Exception("Cannot overwrite: no existing dataset with name {}".format(self.pbi_dataset))
 
-        else:
+        else:  # new_dataset
             response = self.pbi.create_dataset_from_schema(
                     pbi_dataset=self.pbi_dataset,
                     pbi_table=self.pbi_table,

@@ -66,6 +66,19 @@ class PowerBI(object):
         ))
         return response
 
+    def empty_dataset(self, dsid, pbi_table=DEFAULT_PBI_TABLE, pbi_group_id=None):
+        # Empty an existing dataset's content, without deleting the dataset
+        #    keeping related reports intact
+        response = self.delete(
+            TABLE_ROWS_API.format(
+                self.get_datasets_base_url(pbi_group_id=pbi_group_id),
+                dsid,
+                pbi_table
+            ),
+            fail_on_errors=False
+        )
+        return response
+
     def create_dataset_from_schema(self, pbi_dataset=None, pbi_table=DEFAULT_PBI_TABLE, pbi_group_id=None, schema=None):
         # Build the Power BI Dataset schema
         columns = []
@@ -139,6 +152,17 @@ class PowerBI(object):
         response = requests.post(
             url,
             data=data,
+            headers=self.headers
+        )
+        assert_response_ok(response, fail_on_errors=fail_on_errors)
+        if is_json_response(response):
+            return response.json()
+        else:
+            return response
+
+    def delete(self, url, fail_on_errors=True):
+        response = requests.delete(
+            url,
             headers=self.headers
         )
         assert_response_ok(response, fail_on_errors=fail_on_errors)
