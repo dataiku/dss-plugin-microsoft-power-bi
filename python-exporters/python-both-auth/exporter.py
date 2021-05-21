@@ -74,8 +74,8 @@ class PowerBIExporter(Exporter):
         if self.export_method == "overwrite":
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
-                for dataset in datasets:
-                    self.pbi.empty_dataset(dataset, pbi_table=self.pbi_table, pbi_group_id=self.pbi_group_id)
+                logger.warning("Emptying dataset {}".format(datasets[0]))
+                self.pbi.empty_dataset(datasets[0], pbi_table=self.pbi_table, pbi_group_id=self.pbi_group_id)
                 self.dsid = datasets[0]
                 logger.info("[+] First emptied Power BI dataset ID for overwrite {}".format(self.dsid))
             else:
@@ -94,6 +94,10 @@ class PowerBIExporter(Exporter):
                 raise Exception("Cannot overwrite: no existing dataset with name {}".format(self.pbi_dataset))
 
         else:  # new_dataset
+            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
+            if len(datasets) > 0:
+                logger.error("ERROR [-] Dataset with name {} already exists".format(self.pbi_dataset))
+                raise Exception("Dataset '{}' already exists".format(self.pbi_dataset))
             response = self.pbi.create_dataset_from_schema(
                     pbi_dataset=self.pbi_dataset,
                     pbi_table=self.pbi_table,
