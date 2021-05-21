@@ -2,12 +2,13 @@ import json
 import requests
 import logging
 
+BASE_URL = "https://api.powerbi.com/v1.0/myorg"
 
-GROUPS_API = "https://api.powerbi.com/v1.0/myorg/groups"
-DATASETS_API = "https://api.powerbi.com/v1.0/myorg/datasets"
-GROUP_DATASETS_API = "https://api.powerbi.com/v1.0/myorg/groups/{group_id}/datasets"
+GROUPS_API = BASE_URL + "/groups"
+DATASETS_API = BASE_URL + "/datasets"
+GROUP_DATASETS_API = BASE_URL + "/groups/{group_id}/datasets"
 TABLE_ROWS_API = "{}/{}/tables/{}/rows"
-API_404 = "https://api.powerbi.com/v1.0/myorg/lalala"
+API_404 = BASE_URL + "/lalala"
 DEFAULT_PBI_TABLE = "dss-data"
 
 # Data types mapping DSS => Power BI
@@ -128,6 +129,18 @@ class PowerBI(object):
         else:
             ret = GROUP_DATASETS_API.format(group_id=pbi_group_id)
         return ret
+
+    def get_datasets_autorefresh_url(self, pbi_group_id=None):
+        return self.get_datasets_base_url(pbi_group_id) + "/{dataset_id}/refreshes"
+
+    def refresh_dataset(self, dsid, pbi_group_id=None):
+        endpoint = self.get_datasets_autorefresh_url(pbi_group_id=pbi_group_id).format(dataset_id=dsid)
+        response = requests.post(endpoint, headers=self.headers)
+        assert_response_ok(response, while_trying="Refreshed dataset {}".format(dsid))
+        logger.info("[+] Refreshed Power BI dataset {} (response code: {})...".format(
+            dsid, response.status_code
+        ))
+        return response
 
     def get(self, url):
         response = requests.get(url, headers=self.headers)
