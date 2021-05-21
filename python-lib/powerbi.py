@@ -134,8 +134,11 @@ class PowerBI(object):
         return self.get_datasets_base_url(pbi_group_id) + "/{dataset_id}/refreshes"
 
     def refresh_dataset(self, dsid, pbi_group_id=None):
+        payload = {
+            "notifyOption": "MailOnCompletion"
+        }
         endpoint = self.get_datasets_autorefresh_url(pbi_group_id=pbi_group_id).format(dataset_id=dsid)
-        response = requests.post(endpoint, headers=self.headers)
+        response = requests.post(endpoint, headers=self.headers, data=json.dumps(payload))
         assert_response_ok(response, while_trying="Refreshed dataset {}".format(dsid))
         logger.info("[+] Refreshed Power BI dataset {} (response code: {})...".format(
             dsid, response.status_code
