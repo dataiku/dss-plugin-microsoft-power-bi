@@ -69,7 +69,7 @@ class PowerBI(object):
     def empty_dataset(self, dsid, pbi_table=DEFAULT_PBI_TABLE, pbi_group_id=None):
         # Empty an existing dataset's content, without deleting the dataset
         #    keeping related reports intact
-        response = self.delete(
+        response = self._delete(
             TABLE_ROWS_API.format(
                 self.get_datasets_base_url(pbi_group_id=pbi_group_id),
                 dsid,
@@ -160,7 +160,7 @@ class PowerBI(object):
         else:
             return response
 
-    def delete(self, url, fail_on_errors=True):
+    def _delete(self, url, fail_on_errors=True):
         response = requests.delete(
             url,
             headers=self.headers
