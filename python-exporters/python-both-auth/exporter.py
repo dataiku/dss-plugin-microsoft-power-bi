@@ -1,12 +1,10 @@
 import json
-import logging
 from powerbi import PowerBI, generate_access_token
 from dataiku.exporter import Exporter
 from math import isnan
+from safe_logger import SafeLogger
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO,
-                    format='power-bi plugin %(levelname)s - %(message)s')
+logger = SafeLogger("power-bi-v2 plugin", forbiden_keys=["ms-oauth_credentials", "password", "client-secret"])
 
 
 class PowerBIExporter(Exporter):
@@ -14,6 +12,7 @@ class PowerBIExporter(Exporter):
     EMPTY_CONNECTION = {"username": None, "password": None, "client-id": None, "client-secret": None}
 
     def __init__(self, config, plugin_config):
+        logger.info("config={}, plugin_config={}".format(logger.filter_secrets(config), logger.filter_secrets(plugin_config)))
         self.config = config
         self.plugin_config = plugin_config
         self.row_index = 0
@@ -31,13 +30,8 @@ class PowerBIExporter(Exporter):
 
         authentication_method = self.config.get("authentication_method", None)
         if authentication_method == "oauth":
-            try:
-                access_token = config.get('powerbi_connection')['ms-oauth_credentials']
-                self.pbi = PowerBI(access_token)
-            except Exception as err:
-                logger.error("ERROR [-] Error while reading your Power BI access token from Project Variables")
-                logger.error(str(err))
-                raise Exception("Authentication error")
+            access_token = self.get_oauth_token_from_config(config)
+            self.pbi = PowerBI(access_token)
             self.pbi_group_id = self.pbi.get_group_id_by_name(self.pbi_workspace)
         elif authentication_method == "credentials":
             basic_connection = self.config.get("basic_connection", self.EMPTY_CONNECTION)
@@ -62,28 +56,28 @@ class PowerBIExporter(Exporter):
             self.pbi = PowerBI(token)
             self.pbi_group_id = self.pbi.get_group_id_by_name(self.pbi_workspace)
 
+    def get_oauth_token_from_config(self, config):
+        access_token = config.get('powerbi_connection', {}).get('ms-oauth_credentials')
+        if access_token is None:
+            logger.error("ERROR [-] Error while reading your Power BI access token from Project Variables")
+            raise Exception("Authentication error")
+        if isinstance(access_token, dict):
+            NO_INLINE_ERROR_MESSAGE = "OAuth settings cannot be used inlined. Please define a preset in Plugins > Microsoft Power BI v2 > Settings > Azure Single Sign On"
+            logger.error("ERROR [-] {}".format(NO_INLINE_ERROR_MESSAGE))
+            raise Exception("Authentication error. {}".format(NO_INLINE_ERROR_MESSAGE))
+        return access_token
+
     def open(self, schema):
         self.schema = schema
         self.pbi.prepare_date_columns(self.schema)
+
         if self.export_method == "overwrite":
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
             if len(datasets) > 0:
-                for dataset in datasets:
-                    self.pbi.delete_dataset(dataset)
-                response = self.pbi.create_dataset_from_schema(
-                    pbi_dataset=self.pbi_dataset,
-                    pbi_table=self.pbi_table,
-                    pbi_group_id=self.pbi_group_id,
-                    schema=schema
-                )
-                if response.get("id") is None:
-                    logger.error("ERROR [-] Error while creating your Power BI dataset.")
-                    logger.error("ERROR [-] Azure response:")
-                    logger.error(json.dumps(response, indent=4))
-                    raise Exception("Dataset creation error probably from Azure")
-
-                self.dsid = response["id"]
-                logger.info("[+] Created Power BI dataset ID for overwrite {}".format(self.dsid))
+                logger.warning("Emptying dataset {}".format(datasets[0]))
+                self.pbi.empty_dataset(datasets[0], pbi_table=self.pbi_table, pbi_group_id=self.pbi_group_id)
+                self.dsid = datasets[0]
+                logger.info("[+] First emptied Power BI dataset ID for overwrite {}".format(self.dsid))
             else:
                 logger.error("ERROR [-] No existing dataset with name {}".format(self.pbi_dataset))
                 logger.error("ERROR [-] Select 'Create new dataset' to create a new one")
@@ -99,7 +93,11 @@ class PowerBIExporter(Exporter):
                 logger.error("ERROR [-] Select 'Create new dataset' to create a new one")
                 raise Exception("Cannot overwrite: no existing dataset with name {}".format(self.pbi_dataset))
 
-        else:
+        else:  # new_dataset
+            datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)
+            if len(datasets) > 0:
+                logger.error("ERROR [-] Dataset with name {} already exists".format(self.pbi_dataset))
+                raise Exception("Dataset '{}' already exists".format(self.pbi_dataset))
             response = self.pbi.create_dataset_from_schema(
                     pbi_dataset=self.pbi_dataset,
                     pbi_table=self.pbi_table,
