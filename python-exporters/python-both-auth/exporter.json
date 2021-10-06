@@ -46,7 +46,7 @@
         {
             "name": "workspace",
             "label": "Workspace",
-            "description": "Workspace ID / \"My Workspace\" if empty",
+            "description": "Workspace name / \"My Workspace\" if empty",
             "type": "STRING",
             "defaultValue": "",
             "mandatory" : true
