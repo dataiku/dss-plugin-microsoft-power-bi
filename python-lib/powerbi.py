@@ -117,7 +117,7 @@ class PowerBI(object):
     def get_group_id_by_name(self, pbi_workspace=None):
         if pbi_workspace is None or pbi_workspace == "My workspace":
             return None
-        json_response = self.get(GROUPS_API)
+        json_response = self.get(GROUPS_API, custom_error_messages={401: "No access to groups/workspaces lists. Please check your access rights."})
         groups = json_response.get("value", [])
         group = self.filter_group_by_name(groups, pbi_workspace)
         group_id = group.get("id")
@@ -142,9 +142,9 @@ class PowerBI(object):
             ret = GROUP_DATASETS_API.format(group_id=pbi_group_id)
         return ret
 
-    def get(self, url):
+    def get(self, url, custom_error_messages=None):
         response = requests.get(url, headers=self.headers)
-        assert_response_ok(response)
+        assert_response_ok(response, custom_error_messages=custom_error_messages)
         json_response = response.json()
         return json_response
 
@@ -204,12 +204,10 @@ def is_json_response(response):
     return response.headers.get('content-type').find("application/json") >= 0
 
 
-def assert_response_ok(response, while_trying=None, fail_on_errors=True):
+def assert_response_ok(response, while_trying=None, fail_on_errors=True, custom_error_messages=None):
     if response.status_code >= 400:
-        if while_trying is None:
-            handle_exception_message("Error {}: {}".format(response.status_code, response.content), fail_on_errors=fail_on_errors)
-        else:
-            handle_exception_message("Error {} while {}: {}".format(response.status_code, while_trying, response.content), fail_on_errors=fail_on_errors)
+        error_message = get_error_message(response, while_trying=while_trying, custom_error_messages=custom_error_messages)
+        handle_exception_message(error_message, fail_on_errors=fail_on_errors)
 
 
 def handle_exception_message(message, fail_on_errors=True):
@@ -217,6 +215,18 @@ def handle_exception_message(message, fail_on_errors=True):
         raise Exception(message)
     else:
         logger.error(message)
+
+
+def get_error_message(response, while_trying=None, custom_error_messages=None):
+    custom_error_messages = custom_error_messages or {}
+    error_message = ""
+    if custom_error_messages and (response.status_code in custom_error_messages):
+        error_message = custom_error_messages.get(response.status_code, "")
+    elif while_trying is None:
+        error_message = "Error {}: {}".format(response.status_code, response.content)
+    else:
+        error_message = "Error {} while {}: {}".format(response.status_code, while_trying, response.content)
+    return error_message
 
 
 def generate_access_token(username=None, password=None, client_id=None, client_secret=None):
