@@ -20,6 +20,8 @@ class PowerBIExporter(Exporter):
         self.row_buffer["rows"] = []
 
         self.pbi_dataset = self.config.get("dataset", None)
+        if not self.pbi_dataset:
+            raise Exception("The dataset name is not defined.")
         self.pbi_workspace = self.config.get("workspace", None)
         if self.pbi_workspace == "":
             self.pbi_workspace = None
