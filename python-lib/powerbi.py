@@ -244,14 +244,14 @@ def get_error_message(response, while_trying=None, custom_error_messages=None):
     if custom_error_messages and (response.status_code in custom_error_messages):
         error_message = custom_error_messages.get(response.status_code, "")
     elif while_trying is None:
-        message = extract_error_message_from_content(response)
-        error_message = "Error {}: {}".format(response.status_code, message)
+        response_message = extract_error_message_from_response(response)
+        error_message = "Error {}: {}".format(response.status_code, response_message)
     else:
         error_message = "Error {} while {}: {}".format(response.status_code, while_trying, response.content)
     return error_message
 
 
-def extract_error_message_from_content(response):
+def extract_error_message_from_response(response):
     ret = ""
     try:
         json_response = response.json()
