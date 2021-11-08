@@ -115,7 +115,7 @@ class PowerBI(object):
             if column["type"] == "boolean":
                 self.columns_with_boolean.append(column["name"])
         if (len(self.columns_with_date) > 0) or (len(self.columns_with_boolean) > 0):
-            self.json_filter = self.parse_json_dates
+            self.json_filter = self.parse_formattable_values
         else:
             self.json_filter = json.dumps
 
@@ -191,7 +191,7 @@ class PowerBI(object):
         )
         return response
 
-    def parse_json_dates(self, rows):
+    def parse_formattable_values(self, rows):
         ret = []
         try:
             for row in rows:
