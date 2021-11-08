@@ -20,6 +20,8 @@ class PowerBIExporter(Exporter):
         self.row_buffer["rows"] = []
 
         self.pbi_dataset = self.config.get("dataset", None)
+        if not self.pbi_dataset:
+            raise Exception("The dataset name is not defined.")
         self.pbi_workspace = self.config.get("workspace", None)
         if self.pbi_workspace == "":
             self.pbi_workspace = None
@@ -69,7 +71,7 @@ class PowerBIExporter(Exporter):
 
     def open(self, schema):
         self.schema = schema
-        self.pbi.prepare_date_columns(self.schema)
+        self.pbi.register_formattable_columns(self.schema)
 
         if self.export_method == "overwrite":
             datasets = self.pbi.get_dataset_by_name(self.pbi_dataset, pbi_group_id=self.pbi_group_id)

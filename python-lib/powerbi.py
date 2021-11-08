@@ -1,6 +1,7 @@
 import json
 import requests
 import logging
+import math
 
 
 GROUPS_API = "https://api.powerbi.com/v1.0/myorg/groups"
@@ -41,6 +42,7 @@ class PowerBI(object):
             'Content-Type': 'application/json'
         }
         self.columns_with_date = None
+        self.columns_with_boolean = None
 
     def get_datasets(self, pbi_group_id=None):
         endpoint = self.get_datasets_base_url(pbi_group_id=pbi_group_id)
@@ -104,25 +106,30 @@ class PowerBI(object):
         )
         return json_response
 
-    def prepare_date_columns(self, schema):
+    def register_formattable_columns(self, schema):
         self.columns_with_date = []
+        self.columns_with_boolean = []
         for column in schema["columns"]:
             if column["type"] == "date":
                 self.columns_with_date.append(column["name"])
-        if len(self.columns_with_date) > 0:
-            self.json_filter = self.parse_json_dates
+            if column["type"] == "boolean":
+                self.columns_with_boolean.append(column["name"])
+        if (len(self.columns_with_date) > 0) or (len(self.columns_with_boolean) > 0):
+            self.json_filter = self.parse_formattable_values
         else:
             self.json_filter = json.dumps
 
     def get_group_id_by_name(self, pbi_workspace=None):
         if pbi_workspace is None or pbi_workspace == "My workspace":
             return None
-        json_response = self.get(GROUPS_API)
+        json_response = self.get(GROUPS_API, custom_error_messages={401: "No access to groups/workspaces lists. Please check your access rights."})
         groups = json_response.get("value", [])
         group = self.filter_group_by_name(groups, pbi_workspace)
         group_id = group.get("id")
         if group_id is None:
-            raise Exception("The workspace named \"{workspace}\" does not exists on your Power BI account, or you do not have access to it".format(workspace=pbi_workspace))
+            raise Exception(
+                "The workspace named \"{workspace}\" does not exists on your Power BI account, or you do not have access to it".format(workspace=pbi_workspace)
+            )
         return group_id
 
     def filter_group_by_name(self, groups, pbi_workspace):
@@ -142,9 +149,9 @@ class PowerBI(object):
             ret = GROUP_DATASETS_API.format(group_id=pbi_group_id)
         return ret
 
-    def get(self, url):
+    def get(self, url, custom_error_messages=None):
         response = requests.get(url, headers=self.headers)
-        assert_response_ok(response)
+        assert_response_ok(response, custom_error_messages=custom_error_messages)
         json_response = response.json()
         return json_response
 
@@ -179,17 +186,24 @@ class PowerBI(object):
                 dsid,
                 pbi_table
             ),
-            data=new_data,  # json.dumps(rows),
-            fail_on_errors=False
+            data=new_data,
+            fail_on_errors=True
         )
         return response
 
-    def parse_json_dates(self, rows):
+    def parse_formattable_values(self, rows):
         ret = []
-        for row in rows:
-            for column_with_date in self.columns_with_date:
-                row[column_with_date] = date_convertion(row[column_with_date])
-            ret.append(row)
+        try:
+            for row in rows:
+                for column_with_date in self.columns_with_date:
+                    date_to_convert = row[column_with_date]
+                    row[column_with_date] = date_convertion(date_to_convert)
+                for column_with_boolean in self.columns_with_boolean:
+                    boolean_to_check = row[column_with_boolean]
+                    row[column_with_boolean] = boolean_check(boolean_to_check)
+                ret.append(row)
+        except AttributeError:
+            raise Exception("Date '{}' is not correctly formatted".format(date_to_convert))
         return json.dumps(ret)
 
 
@@ -200,16 +214,21 @@ def date_convertion(pandas_date):
     return ret
 
 
+def boolean_check(pandas_boolean):
+    if math.isnan(pandas_boolean):
+        return None
+    else:
+        return pandas_boolean
+
+
 def is_json_response(response):
     return response.headers.get('content-type').find("application/json") >= 0
 
 
-def assert_response_ok(response, while_trying=None, fail_on_errors=True):
+def assert_response_ok(response, while_trying=None, fail_on_errors=True, custom_error_messages=None):
     if response.status_code >= 400:
-        if while_trying is None:
-            handle_exception_message("Error {}: {}".format(response.status_code, response.content), fail_on_errors=fail_on_errors)
-        else:
-            handle_exception_message("Error {} while {}: {}".format(response.status_code, while_trying, response.content), fail_on_errors=fail_on_errors)
+        error_message = get_error_message(response, while_trying=while_trying, custom_error_messages=custom_error_messages)
+        handle_exception_message(error_message, fail_on_errors=fail_on_errors)
 
 
 def handle_exception_message(message, fail_on_errors=True):
@@ -217,6 +236,39 @@ def handle_exception_message(message, fail_on_errors=True):
         raise Exception(message)
     else:
         logger.error(message)
+
+
+def get_error_message(response, while_trying=None, custom_error_messages=None):
+    custom_error_messages = custom_error_messages or {}
+    error_message = ""
+    if custom_error_messages and (response.status_code in custom_error_messages):
+        error_message = custom_error_messages.get(response.status_code, "")
+    elif while_trying is None:
+        response_message = extract_error_message_from_response(response)
+        error_message = "Error {}: {}".format(response.status_code, response_message)
+    else:
+        error_message = "Error {} while {}: {}".format(response.status_code, while_trying, response.content)
+    return error_message
+
+
+def extract_error_message_from_response(response):
+    ret = ""
+    try:
+        json_response = response.json()
+        ret = get_value_from_path(json_response, ["error", "message"], response.content)
+    except Exception:
+        ret = response.content
+    return ret
+
+
+def get_value_from_path(dictionary, path, default_reply=None):
+    ret = dictionary
+    for key in path:
+        if key in ret:
+            ret = ret.get(key)
+        else:
+            return default_reply
+    return ret
 
 
 def generate_access_token(username=None, password=None, client_id=None, client_secret=None):
