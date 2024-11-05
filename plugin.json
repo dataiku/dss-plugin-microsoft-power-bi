@@ -3,7 +3,7 @@
     "version": "2.0.4",
     "meta": {
         "label": "Microsoft Power BI v2",
-        "description": "⚠️ This plugin does not currently work.\nMicrosoft retired the capability that DSS used to publish datasets on PowerBI. We do not know when or if this PowerBI feature will be back.",
+        "description": "⚠️ This plugin does not currently work. Microsoft retired the capability that DSS used to publish datasets on PowerBI. We do not know when or if this PowerBI feature will be back.",
         "author": "Dataiku",
         "icon": "icon-powerbi",
         "licenseInfo": "Apache Software License",
