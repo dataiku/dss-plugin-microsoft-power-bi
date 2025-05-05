@@ -21,6 +21,8 @@ fieldSetterMap = {
     'float':    'Double',
     'double':   'Double',
     'date':     'dateTime',
+    'datetimenotz': 'dateTime',
+    'dateonly':     'dateTime',
     'string':   'String',
     'array':    'String',
     'map':      'String',
@@ -110,7 +112,7 @@ class PowerBI(object):
         self.columns_with_date = []
         self.columns_with_boolean = []
         for column in schema["columns"]:
-            if column["type"] == "date":
+            if column["type"] in ["date", "dateonly", "datetimenotz"]:
                 self.columns_with_date.append(column["name"])
             if column["type"] == "boolean":
                 self.columns_with_boolean.append(column["name"])
