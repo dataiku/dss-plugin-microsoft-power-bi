@@ -1,5 +1,9 @@
 # Changelog
 
+## Version 2.1.0 - Enhancement release - 2026-07-20
+
+- Added supported Python versions: 3.12, 3.13, 3.14
+
 ## [Version 2.0.5](https://github.com/dataiku/dss-plugin-microsoft-power-bi/releases/tag/v2.0.5) - Fix release - 2025-03
 
 - Add new date formats
