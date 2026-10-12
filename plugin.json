@@ -1,14 +1,17 @@
 {
-    "id": "microsoft-power-bi-v2",
-    "version": "2.0.5",
-    "meta": {
-        "label": "Microsoft Power BI v2",
-        "description": "Toolbox for Microsoft Power BI (online version)",
-        "author": "Dataiku",
-        "icon": "icon-powerbi",
-        "licenseInfo": "Apache Software License",
-        "url": "https://www.dataiku.com/product/plugins/microsoft-power-bi",
-        "category": "Consume",
-        "tags": ["Visualization", "Microsoft"]
-    }
+  "id": "microsoft-power-bi-v2",
+  "version": "2.1.0",
+  "meta": {
+    "label": "Microsoft Power BI v2",
+    "description": "Toolbox for Microsoft Power BI (online version)",
+    "author": "Dataiku",
+    "icon": "icon-powerbi",
+    "licenseInfo": "Apache Software License",
+    "url": "https://www.dataiku.com/product/plugins/microsoft-power-bi",
+    "category": "Consume",
+    "tags": [
+      "Visualization",
+      "Microsoft"
+    ]
+  }
 }
