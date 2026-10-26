@@ -8,9 +8,9 @@
     "icon": "icon-powerbi",
     "licenseInfo": "Apache Software License",
     "url": "https://www.dataiku.com/product/plugins/microsoft-power-bi",
-    "category": "Consume",
     "tags": [
       "Visualization",
+      "BI",
       "Microsoft"
     ]
   }
